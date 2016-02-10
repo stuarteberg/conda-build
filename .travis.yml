@@ -32,6 +32,11 @@ script:
   - tests/test-skeleton/test-skeleton.sh
   - conda build --help
 
+branches:
+  only:
+    - master
+    - allow-undefined-getattr-ci
+
 notifications:
     flowdock: ef3821a08a791106512ccfc04c92eccb
 
