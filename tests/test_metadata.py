@@ -8,27 +8,25 @@ from conda_build.metadata import select_lines, handle_config_version
 def test_select_lines():
     lines = """
 test
-test [abc] no
-
-test [abc]
-test # [abc]
-test # [abc] yes
-test # stuff [abc] yes
+test keep-if-true, omit-if-false [abc]
+test keep-if-true, omit-if-false # [abc]
+test [abc] trailing text hides selector
+test foo[:-2] # other brackets are allowed
+test foo[:-2] # other brackets are allowed [abc]
 """
 
     assert select_lines(lines, {'abc': True}) == """
 test
-test [abc] no
-
-test
-test
-test
-test
+test keep-if-true, omit-if-false 
+test keep-if-true, omit-if-false # 
+test [abc] trailing text hides selector
+test foo[:-2] # other brackets are allowed
+test foo[:-2] # other brackets are allowed 
 """
     assert select_lines(lines, {'abc': False}) == """
 test
-test [abc] no
-
+test [abc] trailing text hides selector
+test foo[:-2] # other brackets are allowed
 """
 
 
@@ -70,3 +68,4 @@ class HandleConfigVersionTests(unittest.TestCase):
         self.assertRaises(RuntimeError,
                           handle_config_version,
                           MatchSpec('numpy x.x'), None)
+

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import re
 import sys
+import textwrap
 from os.path import isdir, isfile, join
 
 from conda.compat import iteritems, PY3, text_type
@@ -69,8 +70,26 @@ def ns_cfg():
     return d
 
 
-sel_pat = re.compile(r'(.+?)\s*(#.*)?\[(.+)\](?(2).*)$')
+# Selectors are required to appear at the end of the line.
+# Brackets are permitted elsewhere in the line (e.g. within jinja templates).
+#
+# Examples:
+# 
+#   build:
+#     string: py{{ CONDA_PY }} # [osx]
+#     string: py{{ CONDA_PY }} [osx]
+#     string: py{{ CONDA_PY[:2] }}
+#     string: py{{ CONDA_PY[:2] }} # [osx]
+#     string: py{{ CONDA_PY[:2] }} [osx]
 
+non_bracket_char = r'[^\[\]]'
+sel_pat = re.compile(
+    # Capture everything before the (final) bracket pair
+    r'^(.*)'
+    # Match a pair of brackets; capture the contents
+    + r'\[(' + non_bracket_char + r'+)\]'
+    # Nothing follows the brackets (except maybe whitespace)
+    + r'\s*$')
 
 def select_lines(data, namespace):
     lines = []
@@ -81,18 +100,18 @@ def select_lines(data, namespace):
             continue
         m = sel_pat.match(line)
         if m:
-            cond = m.group(3)
+            cond = m.group(2)
             try:
                 if eval(cond, namespace, {}):
                     lines.append(m.group(1))
             except:
-                sys.exit('''\
-Error: Invalid selector in meta.yaml line %d:
-%s
-''' % (i + 1, line))
-                sys.exit(1)
-            continue
-        lines.append(line)
+                msg = textwrap.dedent('''\
+                    Error: Invalid selector in meta.yaml line %d:
+                    %s
+                    ''' % (i + 1, line))
+                sys.exit(msg)
+        else:
+            lines.append(line)
     return '\n'.join(lines) + '\n'
 
 
